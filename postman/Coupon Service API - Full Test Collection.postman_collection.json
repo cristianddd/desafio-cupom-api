@@ -1,0 +1,318 @@
+{
+  "info": {
+    "_postman_id": "fd4b8e6e-823f-4079-8db6-e3271b08a538",
+    "name": "Coupon Service API - Full Test Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "32204760"
+  },
+  "item": [
+    {
+      "name": "01 - Create Coupon (VALID)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "const json = pm.response.json();",
+              "pm.test('Response has id', function () {",
+              "  pm.expect(json).to.have.property('id');",
+              "});",
+              "",
+              "pm.test('Code is sanitized and uppercase', function () {",
+              "  pm.expect(json.code).to.match(/^[A-Z0-9]{6}$/);",
+              "});",
+              "",
+              "pm.collectionVariables.set('couponId', json.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"AB#C123\",\n  \"description\": \"Cupom válido para testes - sanitização e criação\",\n  \"discountValue\": 10.0,\n  \"expirationDate\": \"2026-12-31T23:59:59\",\n  \"published\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/coupons",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupons"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 - Create Coupon (INVALID - discountValue < 0.5)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"ABC123\",\n  \"description\": \"Cupom inválido: desconto abaixo do mínimo\",\n  \"discountValue\": 0.4,\n  \"expirationDate\": \"2026-12-31T23:59:59\",\n  \"published\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/coupons",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupons"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 - Create Coupon (INVALID - expirationDate in the past)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"ABC123\",\n  \"description\": \"Cupom inválido: data expirada\",\n  \"discountValue\": 1.0,\n  \"expirationDate\": \"2020-01-01T00:00:00\",\n  \"published\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/coupons",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupons"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 - Get Coupon By Id (VALID - 200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const json = pm.response.json();",
+              "pm.test('Response has expected fields', function () {",
+              "  pm.expect(json).to.have.property('id');",
+              "  pm.expect(json).to.have.property('code');",
+              "  pm.expect(json).to.have.property('description');",
+              "  pm.expect(json).to.have.property('discountValue');",
+              "  pm.expect(json).to.have.property('expirationDate');",
+              "  pm.expect(json).to.have.property('published');",
+              "});",
+              "",
+              "pm.test('Returned id matches couponId var', function () {",
+              "  pm.expect(json.id).to.eql(pm.collectionVariables.get('couponId'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coupon/{{couponId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupon",
+            "{{couponId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 - Get Coupon By Id (NOT FOUND - 404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 404', function () {",
+              "  pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coupon/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupon",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 - Delete Coupon (VALID)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// some implementations return 204, others 200",
+              "pm.test('Status is 200 or 204', function () {",
+              "  pm.expect([200, 204]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coupons/{{couponId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupons",
+            "{{couponId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07 - Delete Coupon Again (INVALID - already deleted)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coupons/{{couponId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupons",
+            "{{couponId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 - Delete Coupon (NOT FOUND - 404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 404', function () {",
+              "  pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/coupons/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "coupons",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "couponId",
+      "value": ""
+    }
+  ]
+}
