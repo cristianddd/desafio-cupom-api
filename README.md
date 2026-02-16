@@ -93,3 +93,19 @@ Na raiz do projeto, execute:
 ```bash
 mvn clean package
 docker-compose up --build -d
+```
+
+---
+
+# Testes
+
+## Postman Collection
+
+### A collection do Postman está disponível em:
+postman/coupon-service.postman_collection.json
+
+### Para importar:
+
+1. Abra o Postman
+2. Clique em Import
+3. Selecione o arquivo
