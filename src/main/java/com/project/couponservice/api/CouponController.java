@@ -1,5 +1,6 @@
 package com.project.couponservice.api;
 
+import com.project.couponservice.api.dto.GetCouponResponse;
 import com.project.couponservice.api.dto.CreateCouponRequest;
 import com.project.couponservice.api.dto.CreateCouponResponse;
 import com.project.couponservice.application.create.CreateCouponCommand;
@@ -7,6 +8,9 @@ import com.project.couponservice.application.create.CreateCouponOutput;
 import com.project.couponservice.application.create.CreateCouponUseCase;
 import com.project.couponservice.application.delete.DeleteCouponCommand;
 import com.project.couponservice.application.delete.DeleteCouponUseCase;
+import com.project.couponservice.application.get.GetCouponCommand;
+import com.project.couponservice.application.get.GetCouponOutput;
+import com.project.couponservice.application.get.GetCouponUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,8 +22,18 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CouponController {
 
+    private final GetCouponUseCase getCouponUseCase;
     private final CreateCouponUseCase createCouponUseCase;
     private final DeleteCouponUseCase deleteCouponUseCase;
+
+    @GetMapping("/{id}")
+    public ResponseEntity<GetCouponResponse> getById(@PathVariable Long id) {
+        GetCouponOutput output = getCouponUseCase.execute(new GetCouponCommand(id));
+        GetCouponResponse response = new GetCouponResponse(output.id(), output.code(), output.description(),
+                output.discountValue(), output.expirationDate(), output.status(), output.published(),
+                output.redeemed());
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping
     public ResponseEntity<CreateCouponResponse> create(@Valid @RequestBody CreateCouponRequest request) {
