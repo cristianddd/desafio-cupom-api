@@ -1,180 +1,95 @@
-# Coupon Service - Technical Challenge Manual
+# Coupon Service - Desafio Técnico
+
+Este projeto implementa um serviço REST de cupons de desconto utilizando **Java 17** e **Spring Boot 3.2**. A principal finalidade é demonstrar como aplicar princípios de **Arquitetura Hexagonal (Ports & Adapters)** e **Domain-Driven Design (DDD)** para construir uma aplicação limpa, testável e de baixo acoplamento.
 
 ## Visão Geral
 
-Este projeto implementa um serviço de cupons de desconto em Java usando Spring Boot 3.2.0.  
-O objetivo é expor apenas as ações de **criação** e **deleção (soft delete)** de cupons, aplicando regras de negócio específicas. O foco do teste é demonstrar arquitetura limpa e testabilidade, não apenas fornecer um CRUD genérico.  
-Os cupons possuem os seguintes campos obrigatórios:
+O serviço expõe operações para:
+* Criar um novo cupom.
+* Consultar um cupom pelo identificador.
+* Excluir um cupom (soft delete). A exclusão não remove o registro; apenas marca o cupom como deletado.
 
-- `code` – código alfanumérico com tamanho **exato** de 6 caracteres (caracteres especiais recebidos na requisição são ignorados).  
-- `description` – descrição textual.  
-- `discountValue` – valor monetário do desconto, mínimo 0,5 (sem máximo definido).  
-- `expirationDate` – data/hora de expiração; nunca pode estar no passado.  
-- `published` – flag indicando se o cupom já está publicado.  
+## Dicionário de Dados
 
-Além disso, é possível excluir um cupom a qualquer momento, realizando **soft delete** (o cupom não é removido fisicamente do banco e não pode ser deletado duas vezes).
+Um cupom possui os seguintes campos obrigatórios:
+
+| Campo | Descrição |
+| :--- | :--- |
+| `id` | Identificador único do cupom (gerado pelo sistema). |
+| `code` | Código alfanumérico (apenas letras e números) com **tamanho exato de 6 caracteres**. |
+| `description` | Texto descritivo do cupom. |
+| `discountValue` | Valor monetário do desconto. Deve ser **>= 0,5** (não há máximo definido). |
+| `expirationDate` | Data/hora de expiração (formato ISO-8601). Deve estar **no futuro**. |
+| `published` | Booleano indicando se o cupom já está publicado. |
+| `deleted` | Booleano indicando se o cupom foi deletado (soft delete). |
+
+### Regras de Negócio
+
+1.  **Sanitização:** O código é sanitizado removendo todos os caracteres não alfanuméricos e convertido para maiúsculas; o resultado deve ter exatamente 6 caracteres.
+2.  **Valor Mínimo:** O valor do desconto (`discountValue`) deve ser maior ou igual a 0,5.
+3.  **Expiração:** A data de expiração (`expirationDate`) deve estar no futuro (em relação ao momento da criação).
+4.  **Exclusão Única:** Um cupom não pode ser excluído duas vezes.
+
+---
 
 ## Arquitetura
 
-O projeto segue princípios de **arquitetura hexagonal (Ports & Adapters)** e de **Domain‑Driven Design (DDD)**, buscando separar regras de negócio de detalhes de infraestrutura. O código está organizado em quatro camadas principais:
+O projeto está dividido em quatro camadas principais, de acordo com a Arquitetura Hexagonal:
 
-### 1. Domínio (`domain`)
+### 1. Domínio (domain)
+Contém as entidades e regras de negócio. A classe `Coupon` encapsula todos os campos e validações.
 
-Contém a entidade `Coupon` e exceções de domínio. Toda validação de regras de negócio acontece aqui:
+### 2. Aplicação (application)
+Implementa os casos de uso (Use Cases) responsáveis por orquestrar as operações do domínio sem conhecer detalhes de infraestrutura.
+* **Comando (Command):** Objeto de entrada (ex: `CreateCouponCommand`).
+* **Saída (Output):** Objeto retornado (ex: `CreateCouponOutput`).
+* **Interface:** Contrato que define o método `execute`.
 
-- **Código**: sanitiza a string recebida, removendo caracteres que não sejam letras ou números; o código final deve ter exatamente seis caracteres.  
-- **Valor do desconto**: deve ser ≥ 0,5.  
-- **Data de expiração**: deve ser posterior ao momento atual.  
-- **Exclusão**: cupons não podem ser excluídos duas vezes; um método `delete()` lança exceção caso o cupom já esteja marcado como deletado.
+Os casos de uso dependem apenas de interfaces (`CouponGateway`) para interagir com a persistência.
 
-Expor apenas construtores de fábrica (`newCoupon` e `with`) garante que a entidade seja sempre criada em um estado válido. A factory `with` é usada apenas para reconstruir objetos a partir do banco.
+### 3. Infraestrutura (infra)
+Conecta a aplicação com frameworks externos (Banco de dados, JPA).
+* `CouponJpaEntity`: Mapeamento para tabela no banco.
+* `CouponRepository`: Interface Spring Data JPA.
+* `CouponJpaGateway`: Implementação da porta que traduz objetos de domínio para entidades JPA.
+* `ApplicationConfig`: Configuração dos Beans do Spring.
 
-### 2. Application (`application`)
+### 4. API (api)
+Responsável por expor a API HTTP via Spring MVC (`CouponController`).
 
-Implementa **casos de uso** (Use Cases) que orquestram o fluxo de criação e exclusão sem conhecer detalhes de infraestrutura. Cada caso de uso possui:
+---
 
-- um **comando** (`CreateCouponCommand`, `DeleteCouponCommand`) encapsulando os dados de entrada;  
-- uma **saída** (`CreateCouponOutput`, `DeleteCouponOutput`) com os dados que precisam ser retornados;  
-- uma interface (`CreateCouponUseCase`, `DeleteCouponUseCase`) e uma implementação (`CreateCouponService`, `DeleteCouponService`).
+## API Endpoints
 
-Os services recebem apenas portas (`CouponGateway`) como dependências, evitando acoplamento com frameworks. Toda regra de negócio permanece no domínio; os services apenas orquestram chamada das entidades e persistência.
+| Método | Rota | Descrição |
+| :--- | :--- | :--- |
+| **POST** | `/coupons` | Cria um novo cupom. Corpo: `CreateCouponRequest`  |
+| **GET** | `/coupons/{id}` | Busca um cupom pelo identificador. |
+| **DELETE** | `/coupons/{id}` | Marca o cupom como deletado (soft delete). |
 
-### 3. Infraestrutura (`infra`)
+### Documentação (Swagger)
+O projeto utiliza `springdoc-openapi`. Após iniciar a aplicação, acesse:
+* [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) 
 
-Responsável por integrar o domínio com tecnologias externas.  
-Aqui encontramos:
+---
 
-- **Entidade JPA** `CouponJpaEntity`: mapeamento da classe `Coupon` para a tabela `coupons`.  
-- **Repositório Spring Data JPA** `CouponRepository`: interface para operações básicas de persistência.  
-- **Gateway** `CouponJpaGateway`: implementação de `CouponGateway` que traduz entidades do domínio para JPA e vice‑versa.  
+## Persistência e Configuração
 
-Também há uma classe de configuração (`ApplicationConfig`) que registra os casos de uso como beans Spring sem poluir a camada de aplicação com anotações do Spring.
+A aplicação utiliza **H2 Database** em memória.
+* **Console H2:** [http://localhost:8080/h2-console](http://localhost:8080/h2-console) 
+* **JDBC URL:** `jdbc:h2:mem:coupondb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE` 
+* **User:** `sa` 
+* **Password:** (vazio) 
 
-### 4. Camada de API (`api`)
+**Soft Delete:** O campo `deleted` na `CouponJpaEntity` indica se o cupom foi excluído. O caso de uso de exclusão muda essa flag para `true`, preservando o registro no banco.
 
-Exposta via `CouponController`, usando Spring MVC.  
-Dois endpoints principais:
+---
 
-| Método | Rota            | Descrição                                                 |
-|-------|-----------------|------------------------------------------------------------|
-| POST  | `/coupons`      | Cria um novo cupom.  Corpo: `CreateCouponRequest`.        |
-| DELETE| `/coupons/{id}` | Soft‑delete de um cupom pelo `id`.                         |
+## Como Executar
 
-O controller converte DTOs em comandos e invoca os casos de uso. Exceções de domínio são mapeadas para códigos HTTP apropriados (400 para validações, 404 para não encontrado). A validação de payload é feita com Bean Validation.
+### Com Docker (Recomendado) e Maven instalado
+Na raiz do projeto, execute:
 
-### Swagger (OpenAPI)
-
-A dependência `springdoc-openapi-starter-webmvc-ui` habilita a documentação automática da API.  
-Após iniciar a aplicação, acesse `http://localhost:8080/swagger-ui.html` para explorar os endpoints e realizar requisições.
-
-## Persistência (H2 In-Memory)
-
-O banco em memória H2 simplifica a execução local e os testes. A configuração em `application.yml` utiliza:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:h2:mem:coupondb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password: ""
-    driverClassName: org.h2.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-```
-
-### Soft delete
-
-O campo `deleted` no `CouponJpaEntity` indica que o cupom foi excluído. O caso de uso de exclusão altera essa flag e atualiza o registro, evitando remoção física. Em produções futuras poderia ser aplicado um **@SQLDelete** ou filtros do Hibernate, mas para fins de teste preferiu‑se explicitamente atualizar o campo.
-
-## Testes
-
-A pasta `src/test/java` contém testes unitários utilizando JUnit 5 e Mockito.  
-Os testes cobrem tanto as regras de negócio na camada de domínio (`CouponTest`) quanto os fluxos dos casos de uso (`CreateCouponUseCaseTest`, `DeleteCouponUseCaseTest`).  
-A ideia é validar **comportamentos**, não detalhes de implementação. Exemplos:
-
-- Garantir que um cupom com valor de desconto menor que 0,5 não seja criado.  
-- Assegurar que códigos com caracteres especiais sejam sanitizados e respeitem o tamanho de 6 caracteres.  
-- Verificar que não é possível excluir o mesmo cupom duas vezes.  
-- Checar que o caso de uso de exclusão lança `NotFoundException` quando o cupom não existe.  
-
-Para fins de medição, os testes cobrem a maior parte dos caminhos possíveis, aproximando-se de 80% de cobertura.
-
-## Build e Execução
-
-### Pré‑requisitos
-
-- **Docker** (recomendado) ou Java 17 e Maven.  
-- Opcionalmente `docker-compose` para subir a aplicação com um único comando.
-
-### Utilizando Docker Compose
-
-1. A partir da raiz do projeto (`coupon-service/`), execute:
-
-   ```bash
-   docker-compose build
-   docker-compose up
-   ```
-
-   A aplicação irá expor a API na porta `8080` (`http://localhost:8080`) e a interface Swagger em `/swagger-ui.html`.
-
-2. Para derrubar os containers:
-
-   ```bash
-   docker-compose down
-   ```
-
-### Compilação manual com Maven (caso tenha Maven instalado)
-
-1. Execute `mvn clean package` na raiz do projeto (`coupon-service/`).  
-2. O artefato será gerado em `target/coupon-service-0.0.1-SNAPSHOT.jar`.  
-3. Inicie a aplicação:
-
-   ```bash
-   java -jar target/coupon-service-0.0.1-SNAPSHOT.jar
-   ```
-
-### Exemplos de uso
-
-**Criação de cupom**
-
-```
-POST /coupons
-Content-Type: application/json
-
-{
-  "code": "AB#CD12",
-  "description": "10% de desconto no produto X",
-  "discountValue": 10.0,
-  "expirationDate": "2026-02-14T23:59:59",
-  "published": true
-}
-
-Resposta (201 Created):
-{
-  "id": 1,
-  "code": "ABCD12",
-  "expirationDate": "2026-02-14T23:59:59"
-}
-```
-
-**Exclusão de cupom**
-
-```
-DELETE /coupons/1
-Resposta: 204 No Content
-```
-
-Se tentar excluir o mesmo cupom novamente, a resposta será 400 (Bad Request) com mensagem informando que o cupom já foi deletado.
-
-## Considerações Finais
-
-- A separação em camadas (domínio, aplicação, infra e API) facilita a manutenção, testes e eventuais mudanças de tecnologia.  
-- Os casos de uso possuem **única responsabilidade** e dependem apenas de interfaces (princípio do porteiro), tornando o código mais flexível.  
-- O projeto fornece configuração pronta para execução em memória com H2 e documentação via Swagger, atendendo os requisitos do desafio para nível pleno.  
-- A documentação acima pode ser utilizada como guia em uma apresentação de code review, explicando decisões de design, regras de negócio e forma de execução.
+```bash
+mvn clean package
+docker-compose up --build -d
