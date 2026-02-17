@@ -35,4 +35,9 @@ public class CouponJpaPort implements CouponPort {
         CouponJpaEntity updated = repository.save(entity);
         return updated.toDomain();
     }
+
+    @Override
+    public Optional<Coupon> findByCode(String code) {
+        return repository.findByCode(code).map(CouponJpaEntity::toDomain);
+    }
 }

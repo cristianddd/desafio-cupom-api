@@ -28,7 +28,7 @@ public class GetCouponService implements GetCouponUseCase {
                 coupon.getExpirationDate(),
                 resolveStatus(coupon),
                 coupon.isPublished(),
-                false
+                coupon.isDeleted()
         );
     }
 

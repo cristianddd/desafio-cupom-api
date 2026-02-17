@@ -43,8 +43,58 @@ public class GetCouponUseCaseTest {
         assertEquals(BigDecimal.valueOf(0.8), output.discountValue());
         assertEquals("ACTIVE", output.status());
         assertTrue(output.published());
-        assertFalse(output.redeemed());
+        assertFalse(output.deleted());
         verify(couponPort, times(1)).findById(1L);
+    }
+
+    @Test
+    void executeShouldReturnExpiredStatus() {
+        CouponPort couponPort = mock(CouponPort.class);
+        GetCouponService service = new GetCouponService(couponPort);
+
+        Coupon coupon = Coupon.with(
+                2L,
+                "EXP123",
+                "Cupom expirado",
+                BigDecimal.valueOf(0.8),
+                LocalDateTime.now().minusHours(1),
+                true,
+                false,
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().minusHours(2)
+        );
+
+        when(couponPort.findById(2L)).thenReturn(Optional.of(coupon));
+
+        var output = service.execute(new GetCouponCommand(2L));
+
+        assertEquals("EXPIRED", output.status());
+        assertFalse(output.deleted());
+    }
+
+    @Test
+    void executeShouldReturnDeletedStatus() {
+        CouponPort couponPort = mock(CouponPort.class);
+        GetCouponService service = new GetCouponService(couponPort);
+
+        Coupon coupon = Coupon.with(
+                3L,
+                "DEL123",
+                "Cupom deletado",
+                BigDecimal.valueOf(0.8),
+                LocalDateTime.now().plusDays(1),
+                true,
+                true,
+                LocalDateTime.now().minusDays(2),
+                LocalDateTime.now().minusHours(3)
+        );
+
+        when(couponPort.findById(3L)).thenReturn(Optional.of(coupon));
+
+        var output = service.execute(new GetCouponCommand(3L));
+
+        assertEquals("DELETED", output.status());
+        assertTrue(output.deleted());
     }
 
     @Test

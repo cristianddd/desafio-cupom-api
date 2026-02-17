@@ -11,6 +11,6 @@ public record GetCouponOutput(
         LocalDateTime expirationDate,
         String status,
         boolean published,
-        boolean redeemed
+        boolean deleted
 ) {
 }

@@ -10,6 +10,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,8 +20,8 @@ class CreateCouponUseCaseTest {
 
     @Test
     void executeShouldPersistCouponAndReturnOutput() {
-        CouponPort gateway = mock(CouponPort.class);
-        CreateCouponService service = new CreateCouponService(gateway);
+        CouponPort port = mock(CouponPort.class);
+        CreateCouponService service = new CreateCouponService(port);
 
         CreateCouponCommand command = new CreateCouponCommand(
                 "AB#CD12",
@@ -30,7 +31,6 @@ class CreateCouponUseCaseTest {
                 true
         );
 
-        // Prepare saved entity to return from gateway
         Coupon prePersist = Coupon.newCoupon(
                 command.code(),
                 command.description(),
@@ -49,7 +49,8 @@ class CreateCouponUseCaseTest {
                 prePersist.getCreatedAt(),
                 prePersist.getUpdatedAt()
         );
-        when(gateway.save(any(Coupon.class))).thenReturn(saved);
+        when(port.findByCode("ABCD12")).thenReturn(Optional.empty());
+        when(port.save(any(Coupon.class))).thenReturn(saved);
 
         CreateCouponOutput output = service.execute(command);
 
@@ -59,8 +60,27 @@ class CreateCouponUseCaseTest {
         assertEquals(prePersist.getExpirationDate(), output.expirationDate());
 
         ArgumentCaptor<Coupon> captor = ArgumentCaptor.forClass(Coupon.class);
-        verify(gateway, times(1)).save(captor.capture());
+        verify(port, times(1)).save(captor.capture());
         Coupon passedCoupon = captor.getValue();
         assertEquals("ABCD12", passedCoupon.getCode());
+    }
+
+    @Test
+    void executeShouldThrowWhenCouponCodeAlreadyExists() {
+        CouponPort port = mock(CouponPort.class);
+        CreateCouponService service = new CreateCouponService(port);
+
+        CreateCouponCommand command = new CreateCouponCommand(
+                "AB#CD12",
+                "Test description",
+                BigDecimal.ONE,
+                LocalDateTime.now().plusDays(1),
+                true
+        );
+
+        when(port.findByCode("ABCD12")).thenReturn(Optional.of(mock(Coupon.class)));
+
+        assertThrows(com.project.couponservice.domain.DomainException.class, () -> service.execute(command));
+        verify(port, never()).save(any());
     }
 }

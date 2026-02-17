@@ -11,4 +11,6 @@ public interface CouponPort {
     Optional<Coupon> findById(Long id);
 
     Coupon update(Coupon coupon);
+
+    Optional<Coupon> findByCode(String code);
 }

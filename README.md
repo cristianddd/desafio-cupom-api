@@ -45,14 +45,13 @@ Implementa os casos de uso (Use Cases) responsáveis por orquestrar as operaçõ
 * **Saída (Output):** Objeto retornado (ex: `CreateCouponOutput`).
 * **Interface:** Contrato que define o método `execute`.
 
-Os casos de uso dependem apenas de interfaces (`CouponGateway`) para interagir com a persistência.
+Os casos de uso dependem apenas de interfaces (`CouponPort`) para interagir com a persistência.
 
 ### 3. Infraestrutura (infra)
 Conecta a aplicação com frameworks externos (Banco de dados, JPA).
 * `CouponJpaEntity`: Mapeamento para tabela no banco.
 * `CouponRepository`: Interface Spring Data JPA.
-* `CouponJpaGateway`: Implementação da porta que traduz objetos de domínio para entidades JPA.
-* `ApplicationConfig`: Configuração dos Beans do Spring.
+* `CouponJpaPort`: Implementação da porta que traduz objetos de domínio para entidades JPA.
 
 ### 4. API (api)
 Responsável por expor a API HTTP via Spring MVC (`CouponController`).
@@ -102,7 +101,7 @@ docker-compose up --build -d
 ## Postman Collection
 
 ### A collection do Postman está disponível em:
-postman/coupon-service.postman_collection.json
+postman/Coupon Service API - Full Test Collection.postman_collection.json
 
 ### Para importar:
 

@@ -16,5 +16,5 @@ public class GetCouponResponse {
     private LocalDateTime expirationDate;
     private String status;
     private boolean published;
-    private boolean redeemed;
+    private boolean deleted;
 }

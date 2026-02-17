@@ -31,7 +31,7 @@ public class CouponController {
         GetCouponOutput output = getCouponUseCase.execute(new GetCouponCommand(id));
         GetCouponResponse response = new GetCouponResponse(output.id(), output.code(), output.description(),
                 output.discountValue(), output.expirationDate(), output.status(), output.published(),
-                output.redeemed());
+                output.deleted());
         return ResponseEntity.ok(response);
     }
 
