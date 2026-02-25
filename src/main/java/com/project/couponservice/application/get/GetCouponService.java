@@ -36,7 +36,7 @@ public class GetCouponService implements GetCouponUseCase {
         if (coupon.isDeleted()) {
             return "DELETED";
         }
-        if (!coupon.getExpirationDate().isAfter(LocalDateTime.now())) {
+        if (coupon.isExpired(LocalDateTime.now())) {
             return "EXPIRED";
         }
         return "ACTIVE";
