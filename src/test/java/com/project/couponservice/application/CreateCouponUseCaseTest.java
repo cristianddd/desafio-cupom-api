@@ -3,26 +3,34 @@ package com.project.couponservice.application;
 import com.project.couponservice.application.create.CreateCouponCommand;
 import com.project.couponservice.application.create.CreateCouponOutput;
 import com.project.couponservice.application.create.CreateCouponService;
-import com.project.couponservice.domain.Coupon;
-import com.project.couponservice.domain.ports.CouponPort;
+import com.project.couponservice.domain.DomainException;
+import com.project.couponservice.infra.repository.CouponRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
+@SpringBootTest
 class CreateCouponUseCaseTest {
+
+    @Autowired
+    private CreateCouponService service;
+
+    @Autowired
+    private CouponRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        repository.deleteAll();
+    }
 
     @Test
     void executeShouldPersistCouponAndReturnOutput() {
-        CouponPort port = mock(CouponPort.class);
-        CreateCouponService service = new CreateCouponService(port);
-
         CreateCouponCommand command = new CreateCouponCommand(
                 "AB#CD12",
                 "Test description",
@@ -30,57 +38,41 @@ class CreateCouponUseCaseTest {
                 LocalDateTime.now().plusDays(1),
                 true
         );
-
-        Coupon prePersist = Coupon.newCoupon(
-                command.code(),
-                command.description(),
-                command.discountValue(),
-                command.expirationDate(),
-                command.published()
-        );
-        Coupon saved = Coupon.with(
-                1L,
-                prePersist.getCode(),
-                prePersist.getDescription(),
-                prePersist.getDiscountValue(),
-                prePersist.getExpirationDate(),
-                prePersist.isPublished(),
-                prePersist.isDeleted(),
-                prePersist.getCreatedAt(),
-                prePersist.getUpdatedAt()
-        );
-        when(port.findByCode("ABCD12")).thenReturn(Optional.empty());
-        when(port.save(any(Coupon.class))).thenReturn(saved);
 
         CreateCouponOutput output = service.execute(command);
 
         assertNotNull(output);
-        assertEquals(1L, output.id());
-        assertEquals(prePersist.getCode(), output.code());
-        assertEquals(prePersist.getExpirationDate(), output.expirationDate());
+        assertNotNull(output.id());
+        assertEquals("ABCD12", output.code());
+        assertEquals(1, repository.count());
 
-        ArgumentCaptor<Coupon> captor = ArgumentCaptor.forClass(Coupon.class);
-        verify(port, times(1)).save(captor.capture());
-        Coupon passedCoupon = captor.getValue();
-        assertEquals("ABCD12", passedCoupon.getCode());
+        var persisted = repository.findById(output.id()).orElseThrow();
+        assertEquals("ABCD12", persisted.getCode());
+        assertEquals("Test description", persisted.getDescription());
+        assertTrue(persisted.isPublished());
+        assertFalse(persisted.isDeleted());
     }
 
     @Test
     void executeShouldThrowWhenCouponCodeAlreadyExists() {
-        CouponPort port = mock(CouponPort.class);
-        CreateCouponService service = new CreateCouponService(port);
-
-        CreateCouponCommand command = new CreateCouponCommand(
+        CreateCouponCommand firstCommand = new CreateCouponCommand(
                 "AB#CD12",
                 "Test description",
                 BigDecimal.ONE,
                 LocalDateTime.now().plusDays(1),
                 true
         );
+        service.execute(firstCommand);
 
-        when(port.findByCode("ABCD12")).thenReturn(Optional.of(mock(Coupon.class)));
+        CreateCouponCommand duplicatedCode = new CreateCouponCommand(
+                "ABCD12",
+                "Another description",
+                BigDecimal.valueOf(2),
+                LocalDateTime.now().plusDays(2),
+                false
+        );
 
-        assertThrows(com.project.couponservice.domain.DomainException.class, () -> service.execute(command));
-        verify(port, never()).save(any());
+        assertThrows(DomainException.class, () -> service.execute(duplicatedCode));
+        assertEquals(1, repository.count());
     }
 }

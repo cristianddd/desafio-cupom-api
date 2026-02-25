@@ -1,59 +1,65 @@
 package com.project.couponservice.application;
 
+import com.project.couponservice.application.create.CreateCouponCommand;
+import com.project.couponservice.application.create.CreateCouponService;
 import com.project.couponservice.application.get.GetCouponCommand;
 import com.project.couponservice.application.get.GetCouponService;
-import com.project.couponservice.domain.Coupon;
 import com.project.couponservice.domain.NotFoundException;
-import com.project.couponservice.domain.ports.CouponPort;
+import com.project.couponservice.infra.entity.CouponJpaEntity;
+import com.project.couponservice.infra.repository.CouponRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
-public class GetCouponUseCaseTest {
+@SpringBootTest
+class GetCouponUseCaseTest {
+
+    @Autowired
+    private GetCouponService service;
+
+    @Autowired
+    private CreateCouponService createCouponService;
+
+    @Autowired
+    private CouponRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        repository.deleteAll();
+    }
+
     @Test
     void executeShouldReturnCouponDetailsWhenCouponExists() {
-        CouponPort couponPort = mock(CouponPort.class);
-        GetCouponService service = new GetCouponService(couponPort);
-
-        Coupon coupon = Coupon.with(
-                1L,
+        var created = createCouponService.execute(new CreateCouponCommand(
                 "ABC123",
                 "Cupom de teste",
                 BigDecimal.valueOf(0.8),
                 LocalDateTime.now().plusDays(2),
-                true,
-                false,
-                LocalDateTime.now().minusDays(1),
-                LocalDateTime.now().minusHours(1)
-        );
+                true
+        ));
 
-        when(couponPort.findById(1L)).thenReturn(Optional.of(coupon));
-
-        var output = service.execute(new GetCouponCommand(1L));
+        var output = service.execute(new GetCouponCommand(created.id()));
 
         assertNotNull(output);
-        assertEquals(1L, output.id());
+        assertEquals(created.id(), output.id());
         assertEquals("ABC123", output.code());
         assertEquals("Cupom de teste", output.description());
         assertEquals(BigDecimal.valueOf(0.8), output.discountValue());
         assertEquals("ACTIVE", output.status());
         assertTrue(output.published());
         assertFalse(output.deleted());
-        verify(couponPort, times(1)).findById(1L);
     }
 
     @Test
     void executeShouldReturnExpiredStatus() {
-        CouponPort couponPort = mock(CouponPort.class);
-        GetCouponService service = new GetCouponService(couponPort);
-
-        Coupon coupon = Coupon.with(
-                2L,
+        CouponJpaEntity expired = repository.save(new CouponJpaEntity(
+                null,
                 "EXP123",
                 "Cupom expirado",
                 BigDecimal.valueOf(0.8),
@@ -62,11 +68,9 @@ public class GetCouponUseCaseTest {
                 false,
                 LocalDateTime.now().minusDays(1),
                 LocalDateTime.now().minusHours(2)
-        );
+        ));
 
-        when(couponPort.findById(2L)).thenReturn(Optional.of(coupon));
-
-        var output = service.execute(new GetCouponCommand(2L));
+        var output = service.execute(new GetCouponCommand(expired.getId()));
 
         assertEquals("EXPIRED", output.status());
         assertFalse(output.deleted());
@@ -74,11 +78,8 @@ public class GetCouponUseCaseTest {
 
     @Test
     void executeShouldReturnDeletedStatus() {
-        CouponPort couponPort = mock(CouponPort.class);
-        GetCouponService service = new GetCouponService(couponPort);
-
-        Coupon coupon = Coupon.with(
-                3L,
+        CouponJpaEntity deleted = repository.save(new CouponJpaEntity(
+                null,
                 "DEL123",
                 "Cupom deletado",
                 BigDecimal.valueOf(0.8),
@@ -87,11 +88,9 @@ public class GetCouponUseCaseTest {
                 true,
                 LocalDateTime.now().minusDays(2),
                 LocalDateTime.now().minusHours(3)
-        );
+        ));
 
-        when(couponPort.findById(3L)).thenReturn(Optional.of(coupon));
-
-        var output = service.execute(new GetCouponCommand(3L));
+        var output = service.execute(new GetCouponCommand(deleted.getId()));
 
         assertEquals("DELETED", output.status());
         assertTrue(output.deleted());
@@ -99,12 +98,6 @@ public class GetCouponUseCaseTest {
 
     @Test
     void executeShouldThrowWhenCouponDoesNotExist() {
-        CouponPort couponPort = mock(CouponPort.class);
-        GetCouponService service = new GetCouponService(couponPort);
-
-        when(couponPort.findById(99L)).thenReturn(Optional.empty());
-
         assertThrows(NotFoundException.class, () -> service.execute(new GetCouponCommand(99L)));
-        verify(couponPort, times(1)).findById(99L);
     }
 }
