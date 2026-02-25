@@ -50,7 +50,7 @@ class GetCouponUseCaseTest {
         assertEquals(created.id(), output.id());
         assertEquals("ABC123", output.code());
         assertEquals("Cupom de teste", output.description());
-        assertEquals(BigDecimal.valueOf(0.8), output.discountValue());
+        assertEquals(0, BigDecimal.valueOf(0.8).compareTo(output.discountValue()));
         assertEquals("ACTIVE", output.status());
         assertTrue(output.published());
         assertFalse(output.deleted());
