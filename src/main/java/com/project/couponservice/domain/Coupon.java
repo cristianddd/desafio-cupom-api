@@ -1,13 +1,15 @@
 package com.project.couponservice.domain;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Objects;
 
-@Data
+@Getter
+@Builder
 public class Coupon {
 
     private Long id;
@@ -21,14 +23,14 @@ public class Coupon {
     private LocalDateTime updatedAt;
 
     private Coupon(Long id,
-                  String code,
-                  String description,
-                  BigDecimal discountValue,
-                  LocalDateTime expirationDate,
-                  boolean published,
-                  boolean deleted,
-                  LocalDateTime createdAt,
-                  LocalDateTime updatedAt) {
+                   String code,
+                   String description,
+                   BigDecimal discountValue,
+                   LocalDateTime expirationDate,
+                   boolean published,
+                   boolean deleted,
+                   LocalDateTime createdAt,
+                   LocalDateTime updatedAt) {
         this.id = id;
         this.code = code;
         this.description = description;
@@ -74,6 +76,19 @@ public class Coupon {
         );
     }
 
+    public void redeem() {
+        if (this.deleted) {
+            throw new DomainException("O coupon foi delatado!");
+        }
+        if (!this.published) {
+            throw new DomainException("O coupon não esta mais publicado!");
+        }
+        if (!expirationDate.isAfter(LocalDateTime.now())) {
+            throw new DomainException("A data de validade do cupom deve ser maior que o dia de hoje.");
+        }
+        this.published = true;
+    }
+
     public static Coupon with(Long id,
                               String code,
                               String description,
@@ -103,4 +118,5 @@ public class Coupon {
         this.deleted = true;
         this.updatedAt = LocalDateTime.now();
     }
+
 }

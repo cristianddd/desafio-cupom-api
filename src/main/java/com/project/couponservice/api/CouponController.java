@@ -3,6 +3,10 @@ package com.project.couponservice.api;
 import com.project.couponservice.api.dto.GetCouponResponse;
 import com.project.couponservice.api.dto.CreateCouponRequest;
 import com.project.couponservice.api.dto.CreateCouponResponse;
+import com.project.couponservice.api.dto.RedeemCouponResponse;
+import com.project.couponservice.application.redeem.RedeemCouponCommand;
+import com.project.couponservice.application.redeem.RedeemCouponOutput;
+import com.project.couponservice.application.redeem.RedeemCouponUseCase;
 import com.project.couponservice.application.create.CreateCouponCommand;
 import com.project.couponservice.application.create.CreateCouponOutput;
 import com.project.couponservice.application.create.CreateCouponUseCase;
@@ -25,6 +29,7 @@ public class CouponController {
     private final GetCouponUseCase getCouponUseCase;
     private final CreateCouponUseCase createCouponUseCase;
     private final DeleteCouponUseCase deleteCouponUseCase;
+    private final RedeemCouponUseCase redeemCouponUseCase;
 
     @GetMapping("/{id}")
     public ResponseEntity<GetCouponResponse> getById(@PathVariable Long id) {
@@ -49,5 +54,12 @@ public class CouponController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         deleteCouponUseCase.execute(new DeleteCouponCommand(id));
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/redeem")
+    public ResponseEntity<RedeemCouponResponse> redeem(@PathVariable Long id) {
+        RedeemCouponOutput output = redeemCouponUseCase.execute(new RedeemCouponCommand(id));
+        RedeemCouponResponse response = new RedeemCouponResponse(output.id(), output.redeemed());
+        return ResponseEntity.ok(response);
     }
 }
